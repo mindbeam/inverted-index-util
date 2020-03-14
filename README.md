@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/mindbeam/inverted-index-util.svg?branch=master)](https://travis-ci.org/mindbeam/inverted-index-util)
+
 # inverted-index-util
 This crate provides utilities for implementing inverted indexes
 
