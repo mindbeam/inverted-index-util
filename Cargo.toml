@@ -1,6 +1,6 @@
 [package]
 name = "inverted-index-util"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Daniel Norman <daniel@danielnorman.net>"]
 edition = "2018"
 description = "Utilities for implementing an inverted index"
