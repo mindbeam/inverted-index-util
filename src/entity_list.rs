@@ -1,51 +1,114 @@
-use std::convert::TryInto;
+use std::cmp::Ordering::{Equal, Greater, Less};
+const ENTITY_ID_LEN: usize = 16;
 
-pub fn insert_entity_mut(entity_list: &mut Vec<u8>, entity_id: &[u8; 16]) {
-    let mut chunks: Vec<[u8; 16]> = entity_list.chunks_exact(16).map(|v| v.try_into().unwrap()).collect();
+pub fn insert_entity_mut(entity_list: &mut Vec<u8>, entity: &[u8; ENTITY_ID_LEN]) {
+    let mut size = entity_list.len() / ENTITY_ID_LEN;
 
-    match chunks.binary_search(&entity_id) {
-        Ok(_) => {}
-        Err(i) => {
-            chunks.insert(i, entity_id.clone());
-        }
+    if size == 0 {
+        entity_list.splice(0..0, entity.iter().copied());
+        return;
     }
-    *entity_list = chunks.concat()
+
+    let mut base = 0usize;
+    while size > 1 {
+        let half = size / 2;
+        let mid = base + half;
+        let start = mid * ENTITY_ID_LEN;
+        let end = start + ENTITY_ID_LEN;
+        let cmp = entity_list[start..end].cmp(entity);
+        base = if cmp == Greater { base } else { mid };
+        size -= half;
+    }
+
+    let start = base * ENTITY_ID_LEN;
+    let end = start + ENTITY_ID_LEN;
+    let cmp = entity_list[start..end].cmp(entity);
+
+    let offset = match cmp {
+        Equal => return, // already present
+        Less => (base + 1) * ENTITY_ID_LEN,
+        Greater => base * ENTITY_ID_LEN,
+    };
+
+    entity_list.splice(offset..offset, entity.iter().copied());
 }
 
-pub fn insert_entity_immut(entity_list: &[u8], entity_id: &[u8; 16]) -> Vec<u8> {
-    let mut chunks: Vec<[u8; 16]> = entity_list.chunks_exact(16).map(|v| v.try_into().unwrap()).collect();
+pub enum ImmutResult {
+    Changed(Vec<u8>),
+    Unchanged,
+}
+pub fn insert_entity_immut(entity_list: &[u8], entity: &[u8; ENTITY_ID_LEN]) -> ImmutResult {
+    let mut size = entity_list.len() / ENTITY_ID_LEN;
 
-    match chunks.binary_search(&entity_id) {
-        Ok(_) => {}
-        Err(i) => {
-            chunks.insert(i, entity_id.clone());
-        }
+    if size == 0 {
+        let mut entity_list = entity_list.to_vec();
+        entity_list.splice(0..0, entity.iter().copied());
+        return ImmutResult::Changed(entity_list);
     }
-    chunks.concat()
+
+    let mut base = 0usize;
+    while size > 1 {
+        let half = size / 2;
+        let mid = base + half;
+        let start = mid * ENTITY_ID_LEN;
+        let end = start + ENTITY_ID_LEN;
+        let cmp = entity_list[start..end].cmp(entity);
+        base = if cmp == Greater { base } else { mid };
+        size -= half;
+    }
+
+    let start = base * ENTITY_ID_LEN;
+    let end = start + ENTITY_ID_LEN;
+    let cmp = entity_list[start..end].cmp(entity);
+
+    let offset = match cmp {
+        Equal => return ImmutResult::Unchanged, // already present
+        Less => (base + 1) * ENTITY_ID_LEN,
+        Greater => base * ENTITY_ID_LEN,
+    };
+
+    let mut entity_list = entity_list.to_vec();
+    entity_list.splice(offset..offset, entity.iter().copied());
+
+    ImmutResult::Changed(entity_list)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn insert_document_mut() {
         let mut entity_list: Vec<u8> = Vec::new();
 
-        super::insert_entity_mut(&mut entity_list, b"aaaaaaaaaaaaaaaa");
-        super::insert_entity_mut(&mut entity_list, b"cccccccccccccccc");
-        super::insert_entity_mut(&mut entity_list, b"aaaaaaaaaaaaaaaa");
-        super::insert_entity_mut(&mut entity_list, b"bbbbbbbbbbbbbbbb");
+        insert_entity_mut(&mut entity_list, b"aaaaaaaaaaaaaaaa");
+        insert_entity_mut(&mut entity_list, b"cccccccccccccccc");
+        insert_entity_mut(&mut entity_list, b"aaaaaaaaaaaaaaaa");
+        insert_entity_mut(&mut entity_list, b"bbbbbbbbbbbbbbbb");
 
         assert_eq!(&entity_list[..], &b"aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbcccccccccccccccc"[..]);
     }
     #[test]
     fn insert_document_immut() {
-        let document_list = b"";
+        let mut entity_list = Vec::new();
 
-        let document_list = super::insert_entity_immut(document_list, b"aaaaaaaaaaaaaaaa");
-        let document_list = super::insert_entity_immut(&document_list, b"cccccccccccccccc");
-        let document_list = super::insert_entity_immut(&document_list, b"aaaaaaaaaaaaaaaa");
-        let document_list = super::insert_entity_immut(&document_list, b"bbbbbbbbbbbbbbbb");
+        match insert_entity_immut(&entity_list, b"aaaaaaaaaaaaaaaa") {
+            ImmutResult::Changed(l) => entity_list = l,
+            ImmutResult::Unchanged => {}
+        };
+        match insert_entity_immut(&entity_list, b"cccccccccccccccc") {
+            ImmutResult::Changed(l) => entity_list = l,
+            ImmutResult::Unchanged => {}
+        };
+        match insert_entity_immut(&entity_list, b"aaaaaaaaaaaaaaaa") {
+            ImmutResult::Changed(l) => entity_list = l,
+            ImmutResult::Unchanged => {}
+        };
+        match insert_entity_immut(&entity_list, b"bbbbbbbbbbbbbbbb") {
+            ImmutResult::Changed(l) => entity_list = l,
+            ImmutResult::Unchanged => {}
+        };
 
-        assert_eq!(document_list, &b"aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbcccccccccccccccc"[..]);
+        assert_eq!(entity_list, &b"aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbcccccccccccccccc"[..]);
     }
 }

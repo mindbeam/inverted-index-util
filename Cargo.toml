@@ -22,5 +22,5 @@ rusty_ulid = "0.9.3"
 criterion = "0.3"
 
 [[bench]]
-name = "document_list_insert"
+name = "entity_list_insert"
 harness = false
