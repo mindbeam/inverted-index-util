@@ -24,8 +24,9 @@ fn insert_immut(n: usize) {
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("insert_mut_2k", |b| b.iter(|| insert_mut(black_box(2000))));
-    c.bench_function("insert_immut_2k", |b| b.iter(|| insert_immut(black_box(2000))));
     c.bench_function("insert_mut_200k", |b| b.iter(|| insert_mut(black_box(200_000))));
+    c.bench_function("insert_immut_2k", |b| b.iter(|| insert_immut(black_box(2000))));
+    c.bench_function("insert_immut_10k", |b| b.iter(|| insert_immut(black_box(10_000))));
 }
 
 criterion_group!(benches, criterion_benchmark);
