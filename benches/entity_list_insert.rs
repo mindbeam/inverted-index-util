@@ -1,12 +1,13 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use inverted_index_util::entity_list::*;
+use typenum::consts::U16;
 
 fn insert_mut(n: usize) {
     let mut document_list: Vec<u8> = Vec::with_capacity(n);
 
     for _ in 0..n {
         let ulid_bytes: [u8; 16] = rusty_ulid::generate_ulid_bytes();
-        insert_entity_mut(&mut document_list, &ulid_bytes);
+        insert_entity_mut::<U16>(&mut document_list, &ulid_bytes);
     }
 }
 
@@ -15,7 +16,7 @@ fn insert_immut(n: usize) {
     for _ in 0..n {
         let ulid_bytes: [u8; 16] = rusty_ulid::generate_ulid_bytes();
 
-        match insert_entity_immut(&document_list, &ulid_bytes) {
+        match insert_entity_immut::<U16>(&document_list, &ulid_bytes) {
             ImmutResult::Changed(l) => document_list = l,
             ImmutResult::Unchanged => {}
         }
